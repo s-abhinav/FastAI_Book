@@ -1,7 +1,21 @@
-#+Title: Fast AI - Chapter 4
+#+Title: Chapter 4. Under the Hood: Training a Digit Classifier
 #+PROPERTY: header-args:jupyter-python :session c4 :exports both
 
-* import libraries
+* Running this org file
+** TODO Prerequisites WIP
+**** All the Fast AI dependencies.
+- PyTorch
+- Fast AI library
+- Jupyter-Python for emacs
+- conda
+** In Emacs
+- ~M-x conda-env-activate~ return
+  fast-ai-course
+- ~C-c~ on the org file header, the line after the Title, PROPERTY: header-args ...
+- ~C-c~ on each jupyter-python code block you want to run.
+- ~C-c v b~ to run the whole org file
+
+* Import libraries
 #+begin_src jupyter-python :results output silent
   from fastai.data.external import untar_data
   from fastai.data.external import URLs
@@ -12,16 +26,17 @@
   import torch.nn.functional as F
 #+end_src
 
-* Load data
-#+begin_src jupyter-python :exports code :results table
+* Load images and representation analysis
+** Download a sample of MNIST
+#+begin_src jupyter-python :exports code :results raw
   path = untar_data(URLs.MNIST_SAMPLE)
   path
 #+end_src
 
 #+RESULTS:
-| : Path('/Users/abhinav/.fastai/data/mnist_sample') |
+: Path('/Users/abhinav/.fastai/data/mnist_sample')
 
-* Load 3s and 7s
+** Load 3s and 7s
 
 #+begin_src jupyter-python :results table :exports code
   threes = (path/'train'/'3').ls().sorted()
@@ -34,8 +49,23 @@
 #+RESULTS:
 | [[file:./.ob-jupyter/348d31b9aee02bb71dd175c1b28ac7e09ed95ba1.jpg]] |
 
-* PyTorch Tensor
-#+begin_src jupyter-python :results replace raw
+** NumPy array
+A section of an image of 3 represented in numbers in a NumPy array
+#+begin_src jupyter-python :results raw
+array(im3)[4:10, 4:10]
+#+end_src
+
+#+RESULTS:
+: array([[  0,   0,   0,   0,   0,   0],
+:        [  0,   0,   0,   0,   0,  29],
+:        [  0,   0,   0,  48, 166, 224],
+:        [  0,  93, 244, 249, 253, 187],
+:        [  0, 107, 253, 253, 230,  48],
+:        [  0,   3,  20,  20,  15,   0]], dtype=uint8)
+
+** PyTorch Tensor
+The same can be done using a PyTorch Tensor. Notice the data type at the end of the array.
+#+begin_src jupyter-python :results raw
   im3_tensor = tensor(im3)
   im3_sliced = im3_tensor[4:10, 4:10]
   im3_sliced
@@ -49,6 +79,7 @@
 :         [  0, 107, 253, 253, 230,  48],
 :         [  0,   3,  20,  20,  15,   0]], dtype=torch.uint8)
 
+** Render a section of 3 using Pandas DataFrame
 #+begin_src jupyter-python :results
   df = pd.DataFrame(im3_tensor[4:15, 4:22].numpy())
   df.style.set_properties(**{'font-size':'6pt'}).background_gradient('Greys')
@@ -568,6 +599,9 @@
 </table>
 #+end_export
 
+* Image processing
+** Create tensors for each 3 and 7 using Python list comprehension to store their images
+Consequently verify the number of images loaded in the tensors.
 #+begin_src jupyter-python :results raw
   seven_tensors = [tensor(Image.open(o)) for o in sevens]
   three_tensors = [tensor(Image.open(o)) for o in threes]
@@ -587,6 +621,9 @@
 [[file:./.ob-jupyter/012952cb22921d3b43366091f2c833d0dd1cdcbd.png]]
 :END:
 
+** Stack the images, convert to float(~.float()~) then scale the range between 0 and 1 (~/255~)
+.shape returns the dimension of the resulting tensor, which is 6131 images, each having 28 x 28 pixels.
+
 #+begin_src jupyter-python
   stacked_sevens = torch.stack(seven_tensors).float() / 255
   stacked_threes = torch.stack(three_tensors).float() / 255
@@ -595,6 +632,20 @@
 
 #+RESULTS:
 : torch.Size([6131, 28, 28])
+
+The PyTorch ~mean~ operaion require that the types be float, and with float types, the range is expected to be between 0 and 1.
+
+** Why Normalize by Dividing by 255? (ChatGPT)
+**** Numerical Stability:
+Machine learning models (especially those based on neural networks) perform better when input values are within a small, consistent range. Values like 
+[0,1] are easier for the model to process than [0,255], as they reduce the risk of numerical instability during training (e.g., exploding gradients).
+**** Gradient Descent Works Better:
+If the inputs are large (e.g., [0,255]), gradients during backpropagation can become excessively large, leading to unstable weight updates.
+Scaling to [0,1] ensures that gradients remain in a manageable range.
+**** Consistency Across Datasets:
+Normalization ensures a consistent input scale across different datasets. This is particularly important when pre-trained models are used, as they often expect normalized inputs.
+**** Pixel Values Represent Intensity:
+A pixel value of 255 represents the maximum intensity, and 0 represents no intensity. Dividing by 255 maps these to 1 and 0, respectively, preserving their relative intensity while scaling them to a smaller range.
 
 ** Length of a tensor's shape is its rank
 #+begin_src jupyter-python
@@ -612,7 +663,8 @@ stacked_threes.ndim
 #+RESULTS:
 : 3
 
-** Mean of all the image tensors
+** What does the ideal 3 look like?
+Mean of all the images along dimension 0, which is the list of all images in the tensor.
 #+begin_src jupyter-python
   mean3 = stacked_threes.mean(0)
   show_image(mean3)
@@ -624,7 +676,7 @@ stacked_threes.ndim
 [[file:./.ob-jupyter/74f2b5dbf18c2296d88f525c15cd8c2fa15dcb96.png]]
 :END:
 
-** Mean of 7
+** The ideal 7
 #+begin_src jupyter-python
   mean7 = stacked_sevens.mean(0)
   show_image(mean7)
@@ -648,6 +700,12 @@ stacked_threes.ndim
 [[file:./.ob-jupyter/012952cb22921d3b43366091f2c833d0dd1cdcbd.png]]
 :END:
 
+* Number recognition
+The method that the book uses for number recognition is measuring the ~distance~ of a handwritten number with the ideal 3 or 7 calculated above using mean.
+There are two ways of achieving this using:
+1. The ~mean absolute difference~ or ~L1 norm~.
+2. The ~root mean squared error~ (RMSE) or ~L2 norm~.
+
 ** a_3 distances from mean3
 #+begin_src jupyter-python
   dist_3_abs = (a_3 - mean3).abs().mean()
@@ -668,11 +726,20 @@ stacked_threes.ndim
 #+RESULTS:
 : tensor(0.1586) tensor(0.3021)
 
+** Instead of writing python expressions for these calculations, Pytorch already provides these calculations in functions
+These are ~F.l1_loss~ and ~F.mse_loss~
 #+begin_src jupyter-python
   print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
 #+end_src
 
 #+RESULTS:
 : tensor(0.1586) tensor(0.3021)
+
+* Jargons
+A ~tensor~ is a ~multidimensional data structure~ used to represent data in machine learning and other computational fields.
+- The ~rank~ (or order) of a tensor refers to the number of axes (or dimensions) it has.
+  Example: A scalar has rank 0, a vector has rank 1, a matrix has rank 2, and so on.
+- The ~shape~ of a tensor is a tuple that specifies the size of each axis (or dimension).
+  Example: A tensor with shape (3, 4) has 2 dimensions (rank 2), with the first axis of size 3 and the second axis of size 4.
 
 
