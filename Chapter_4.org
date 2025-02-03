@@ -17,13 +17,25 @@
 
 * Import libraries
 #+begin_src jupyter-python :results output silent
+  from PIL import Image
+
+  # Numerical and plotting libraries
+  import numpy as np
+  import matplotlib.pyplot as plt
+  import pandas as pd
+  import math
+  import operator
+  from matplotlib import rcParams
+
+  # PyTorch
+  import torch
+  from torch import tensor
+  import torch.nn.functional as F
+
+  # FastAI
   from fastai.data.external import untar_data
   from fastai.data.external import URLs
   from fastai.vision.all import *
-  from PIL import Image
-  import numpy as np
-  import pandas as pd
-  import torch.nn.functional as F
 #+end_src
 
 * Load images and representation analysis
@@ -742,4 +754,520 @@ A ~tensor~ is a ~multidimensional data structure~ used to represent data in mach
 - The ~shape~ of a tensor is a tuple that specifies the size of each axis (or dimension).
   Example: A tensor with shape (3, 4) has 2 dimensions (rank 2), with the first axis of size 3 and the second axis of size 4.
 
+* Graph functions
+** Plot
+*** Code
+#+begin_src jupyter-python :results silent
+  import matplotlib.pyplot as plt
+  import numpy as np
+
+  def plot_function(
+      f,
+      x_range=(-2, 2),
+      steps=100,
+      title=None,
+      tx=None,
+      ty=None,
+      figsize=(6, 4),
+      colors={"background": '#2C3539', "line": 'white', "title": 'white', "axis": 'white', "grid": 'gray'},
+      grid_style='--',
+      output_file=None
+  ):
+      """
+      Plots a mathematical function with minimal required arguments.
+
+      Parameters:
+          f (function): The mathematical function to plot.
+          x_range (tuple): Range for x-axis values as (min, max). Default: (-2, 2).
+          steps (int): Number of points for evaluating the function. Default: 100.
+          title (str): Title of the plot. If None, no title is shown.
+          tx (str): Label for the x-axis. Default: None.
+          ty (str): Label for the y-axis. Default: None.
+          figsize (tuple): Size of the figure (width, height). Default: (6, 4).
+          colors (dict): A dictionary for color settings (background, line, title, axis, grid). Default: preset colors.
+          grid_style (str): Line style for grid. Default: '--'.
+          output_file (str): File name to save the plot. If None, the plot is displayed.
+      """
+
+      # Generate x values and evaluate the function
+      x = np.linspace(*x_range, steps)
+      y = f(x)
+
+      # Unpack colors
+      bg_color = colors.get("background", '#2C3539')
+      line_color = colors.get("line", 'white')
+      title_color = colors.get("title", 'white')
+      axis_color = colors.get("axis", 'white')
+      grid_color = colors.get("grid", 'gray')
+
+      # Create the plot
+      fig, ax = plt.subplots(figsize=figsize)
+      ax.set_facecolor(bg_color)
+      fig.patch.set_facecolor(bg_color)
+
+      # Plot the function
+      ax.plot(x, y, color=line_color)
+
+      # Set labels and title
+      if title:
+          ax.set_title(title, color=title_color, fontsize=11)
+      if tx:
+          ax.set_xlabel(tx, color=axis_color, fontsize=10)
+      if ty:
+          ax.set_ylabel(ty, color=axis_color, fontsize=10)
+
+      # Customize ticks
+      ax.tick_params(axis='x', colors=axis_color)
+      ax.tick_params(axis='y', colors=axis_color)
+
+      # Add gridlines
+      ax.axhline(0, color='red', linewidth=0.5)
+      ax.axvline(0, color='red', linewidth=0.5)
+      ax.grid(True, color=grid_color, linestyle=grid_style)
+
+      # Save or show the plot
+      if output_file:
+          fig.savefig(output_file, format='svg' if output_file.endswith('.svg') else 'png')
+          plt.close(fig)
+          print(output_file)  # Return the file path for consistency
+      else:
+          plt.show()
+
+  # # Example usage
+  # plot_function(
+  #     lambda x: x**2 - 2 * x + 1,
+  #     title=r"$f(x) = x^2 - 2x + 1$",
+  #     output_file="quadratic.svg"
+  # )
+
+  # plot_function(
+  #     np.sin,
+  #     title=r"$f(x) = \sin(x)$",
+  #     output_file="sine.svg"
+  # )
+#+end_src
+
+**** Example
+
+#+begin_src jupyter-python :results file link :file "images/Chapter4/quadratic.svg" :var output_file="images/Chapter4/quadratic.svg"
+  plot_function(
+      lambda x: x**2 - 2*x + 1,
+      title=r"$f(x) = x^2 - 2x + 1$",
+      output_file=output_file
+  )
+#+end_src
+
+#+RESULTS:
+[[file:images/Chapter4/quadratic.svg]]
+
+
+** Scatter
+**** Code
+  :PROPERTIES:
+  :CUSTOM_ID: scatter-plot-code
+  :END:
+#+begin_src jupyter-python :results silent
+  import matplotlib.pyplot as plt
+  import numpy as np
+  import torch
+
+  def show_preds(
+      time,
+      speed,
+      preds,
+      ax=None,
+      figsize=(6, 4),
+      scatter_color='blue',
+      pred_color='red',
+      output_file=None
+  ):
+      """
+      Plots true data points and predictions.
+
+      Parameters:
+          time (array-like): X-axis values.
+          speed (array-like): True Y-axis values.
+          preds (torch.Tensor): Predicted Y-axis values (PyTorch tensor).
+          ax (matplotlib.axes._subplots.AxesSubplot, optional): Matplotlib Axes object to plot on.
+          figsize (tuple, optional): Figure size (width, height).
+          scatter_color (str, optional): Color for the true data points.
+          pred_color (str, optional): Color for the prediction points.
+          output_file (str, optional): Path to save the plot as an SVG file. If None, shows interactively.
+      """
+      colors={"background": '#2C3539', "line": 'white', "title": 'white', "axis": 'white', "grid": 'gray'}
+
+      bg_color = colors.get("background", '#2C3539')
+
+      if ax is None:
+          fig, ax = plt.subplots(figsize=figsize)
+      else:
+          fig = ax.figure
+
+      ax.set_facecolor(bg_color)
+      fig.patch.set_facecolor(bg_color)
+
+      # Convert preds to numpy if it's a torch tensor
+      preds_np = preds.detach().cpu().numpy() if torch.is_tensor(preds) else np.array(preds)
+
+      # Plot true values and predictions
+      ax.scatter(time, speed, color=scatter_color, label="True Data")
+      ax.scatter(time, preds_np, color=pred_color, label="Predictions")
+
+      # Add labels, legend, and grid
+      ax.set_xlabel("Time")
+      ax.set_ylabel("Speed")
+      ax.legend()
+      ax.grid(True)
+
+      # Save or show the plot
+      if output_file:
+          fig.savefig(output_file, format='svg')
+          plt.close(fig)
+          print(output_file)  # Output filename for Org-mode integration
+      else:
+          plt.show()
+#+end_src
+
+See [[#scatter-plot-example][Scatter plot example]]
+* Notes
+** Stack
+#+begin_src jupyter-python :results silent
+    stacked_sevens = torch.stack(seven_tensors).float()/255
+    stacked_threes = torch.stack(three_tensors).float()/255
+    mean3 = stacked_threes.mean(0)
+    mean7 = stacked_sevens.mean(0)
+#+end_src
+
+#+RESULTS:
+
+** Distance a3 with 3
+#+begin_src jupyter-python :results output
+a_3 = stacked_threes[1]
+dist_3_abs = (a_3 - mean3).abs().mean()
+dist_3_sqr = ((a_3 - mean3)**2).mean().sqrt()
+print(dist_3_abs,dist_3_sqr)
+#+end_src
+
+#+RESULTS:
+: tensor(0.1114) tensor(0.2021)
+
+** Distance a3 with 7
+#+begin_src jupyter-python :results output
+  dist_7_abs = (a_3 - mean7).abs().mean()
+  dist_7_sqr = ((a_3 - mean7)**2).mean().sqrt()
+  print(dist_7_abs,dist_7_sqr)
+#+end_src
+
+#+RESULTS:
+: tensor(0.1586) tensor(0.3021)
+
+** Loss
+#+begin_src jupyter-python :results output
+print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
+#+end_src
+
+#+RESULTS:
+: tensor(0.1586) tensor(0.3021)
+
+** Broadcasting
+Broadcasting automatically expands arrays or tensors of smaller shapes to match larger ones for element-wise operations without duplicating data.
+
+#+begin_src jupyter-python :results output
+  valid_3_tens = torch.stack([tensor(Image.open(o))
+                              for o in (path/'valid'/'3').ls()])
+  valid_3_tens = valid_3_tens.float()/255
+  valid_7_tens = torch.stack([tensor(Image.open(o))
+                              for o in (path/'valid'/'7').ls()])
+  valid_7_tens = valid_7_tens.float()/255
+  print(valid_3_tens.shape,valid_7_tens.shape)
+#+end_src
+
+#+RESULTS:
+: torch.Size([1010, 28, 28]) torch.Size([1028, 28, 28])
+
+*** Mean absolute error
+#+begin_src jupyter-python :results output
+  def mnist_distance(a,b): return (a-b).abs().mean((-1,-2))
+  print(mnist_distance(a_3, mean3))
+#+end_src
+
+#+RESULTS:
+: tensor(0.1114)
+
+#+begin_src jupyter-python :results output
+valid_3_dist = mnist_distance(valid_3_tens, mean3)
+print(valid_3_dist, valid_3_dist.shape)
+#+end_src
+
+#+RESULTS:
+: tensor([0.1634, 0.1145, 0.1363,  ..., 0.1105, 0.1111, 0.1640]) torch.Size([1010])
+
+#+begin_src jupyter-python :results output
+  def is_3(x): return mnist_distance(x,mean3) < mnist_distance(x,mean7)
+  print(is_3(a_3), is_3(a_3).float(), is_3(valid_3_tens))
+#+end_src
+
+#+RESULTS:
+: tensor(True) tensor(1.) tensor([True, True, True,  ..., True, True, True])
+
+*** Accuracy
+#+begin_src jupyter-python :results value raw
+  accuracy_3s =      is_3(valid_3_tens).float().mean()
+  accuracy_7s = (1 - is_3(valid_7_tens).float()).mean()
+
+  print(accuracy_3s,accuracy_7s,(accuracy_3s+accuracy_7s)/2)
+#+end_src
+
+#+RESULTS:
+: tensor(0.9168) tensor(0.9854) tensor(0.9511)
+
+** Tensor gradient
+#+begin_src jupyter-python :results silent
+  def f(x): return x**2
+  xt = tensor(3.).requires_grad_()
+  yt = f(xt)
+  yt.backward()
+  xt.grad
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python :results output
+xt = tensor([3.,4.,10.]).requires_grad_()
+print(xt)
+#+end_src
+
+#+RESULTS:
+: tensor([ 3.,  4., 10.], requires_grad=True)
+
+
+*** Vector
+#+begin_src jupyter-python :results output
+xt = tensor([3.,4.,10.]).requires_grad_()
+print(xt)
+#+end_src
+
+#+RESULTS:
+: tensor([ 3.,  4., 10.], requires_grad=True)
+
+#+begin_src jupyter-python :results output
+def f(x): return (x**2).sum()
+
+yt = f(xt)
+yt
+
+yt.backward()
+print(xt.grad)
+#+end_src
+
+#+RESULTS:
+: tensor([ 6.,  8., 20.])
+
+* An End-to-End SGD Example
+#+begin_src jupyter-python :results output
+  time = torch.arange(0,20).float()
+  speed = torch.randn(20)*3 + 0.75*(time-9.5)**2 + 1
+  print(time, speed)
+#+end_src
+
+#+RESULTS:
+: tensor([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13.,
+:         14., 15., 16., 17., 18., 19.]) tensor([68.6557, 53.6008, 37.7409, 29.7709, 27.8447, 16.0008, 11.1875,  1.8000,
+:          6.9471, -0.4572,  2.9723,  3.8262,  4.1937, 10.4011, 11.4446, 23.3833,
+:         29.5072, 46.3586, 50.0157, 63.8796])
+
+** Functions
+#+begin_src jupyter-python :results silent
+  def quadratic_f(t, params):
+      a,b,c = params
+      return a*(t**2) + (b*t) + c
+
+  def mse(preds, targets): return ((preds-targets)**2).mean()
+#+end_src
+
+** Step 1: Initialize the paramaters
+First, we initialize the parameters to random values and tell PyTorch
+that we want to track their gradients using requires_grad_:
+
+#+begin_src jupyter-python :results output
+  params = torch.randn(3).requires_grad_()
+  print(params)
+#+end_src
+
+#+RESULTS:
+: tensor([-0.3448, -1.3952, -1.8983], requires_grad=True)
+
+** Step 2: Calculate the predictions
+Next we calculate the predictions
+
+#+begin_src jupyter-python :results output
+  preds = quadratic_f(time, params)
+  print(preds)
+#+end_src
+
+#+RESULTS:
+: tensor([  -1.8983,   -3.6384,   -6.0681,   -9.1875,  -12.9965,  -17.4952,
+:          -22.6835,  -28.5615,  -35.1291,  -42.3864,  -50.3333,  -58.9699,
+:          -68.2962,  -78.3120,  -89.0176, -100.4128, -112.4976, -125.2721,
+:         -138.7363, -152.8901], grad_fn=<AddBackward0>)
+
+Let’s create a little function to see how close our
+predictions are to our targets, and take a look:
+
+#+begin_src jupyter-python :results output :eval no
+  def show_preds(preds, ax=None):
+      if ax is None: ax=plt.subplots()[1]
+      ax.scatter(time, speed)
+      ax.scatter(time, to_np(preds), color='red')
+      ax.set_ylim(-300,100)
+
+  show_preds(preds)
+#+end_src
+
+The code from the book to generate the predictions chart is not very intuitive; It relies on variable state outside the function and also does not work on my machine. See [[#scatter-plot-code][Scatter plot code]]
+
+*** Predictions
+:PROPERTIES:
+:CUSTOM_ID: scatter-plot-example
+:END:
+#+NAME: predictions
+
+#+begin_src jupyter-python :results file link :file "images/Chapter4/predictions.svg" :var output_file="images/Chatper4/predictions.svg"
+  # Sample data
+  time = torch.arange(0,20).float()
+  speed = torch.randn(20)*3 + 0.75*(time-9.5)**2 + 1
+
+  def f(t, params):
+      a,b,c = params
+      return a*(t**2) + (b*t) + c
+
+  def mse(preds, targets): return ((preds-targets)**2).mean()
+
+  params = torch.randn(3).requires_grad_()
+  preds = f(time, params)
+
+  # Save to an SVG file
+  show_preds(
+      time,
+      speed,
+      preds,
+      figsize=(8, 5),
+      scatter_color='green',
+      pred_color='orange',
+      output_file=output_file
+  )
+#+end_src
+
+#+NAME: time, speed, params
+#+begin_src jupyter-python :results output
+print(time, speed, preds)
+#+end_src
+
+#+RESULTS: time, speed, params
+: tensor([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13.,
+:         14., 15., 16., 17., 18., 19.]) tensor([60.1585, 63.1165, 44.4548, 33.7128, 23.2169, 15.6517,  6.2902,  7.5810,
+:         -1.8243,  3.8606, -4.7698,  0.8213,  9.4670, 10.5033, 18.2512, 24.4078,
+:         37.4249, 45.3417, 57.3947, 67.9377]) tensor([-3.4358e-01, -1.9125e-02,  1.0572e+00,  2.8854e+00,  5.4655e+00,
+:          8.7974e+00,  1.2881e+01,  1.7717e+01,  2.3305e+01,  2.9644e+01,
+:          3.6735e+01,  4.4579e+01,  5.3174e+01,  6.2521e+01,  7.2619e+01,
+:          8.3470e+01,  9.5073e+01,  1.0743e+02,  1.2053e+02,  1.3439e+02],
+:        grad_fn=<AddBackward0>)
+
+#+RESULTS: predictions
+[[file:images/Chapter4/predictions.svg]]
+
+
+** Step 3: Calculate the loss
+
+We calculate the loss as follows:
+
+#+begin_src jupyter-python :results output
+  loss = mse(preds, speed)
+  print(loss)
+#+end_src
+
+#+RESULTS:
+: tensor(9882.2656, grad_fn=<MeanBackward0>)
+
+Our goal is now to improve this. To do that, we’ll need to know the gradients.
+
+** Step 4: Calculate the gradients
+
+The next step is to calculate the gradients, or an approximation of how the parameters need to change:
+
+#+begin_src jupyter-python :results output
+loss.backward()
+print(params.grad)
+#+end_src
+
+#+RESULTS:
+: tensor([-32213.8848,  -2093.8638,   -165.3856])
+
+#+begin_src jupyter-python :results output
+print(params.grad * 1e-5)
+#+end_src
+
+#+RESULTS:
+: tensor([-0.3221, -0.0209, -0.0017])
+
+We can use these gradients to improve our parameters. We’ll
+need to pick a learning rate (we’ll discuss how to do that
+in practice in the next chapter; for now, we’ll just use
+1e-5 or 0.00001):
+
+#+begin_src jupyter-python :results output
+print(params)
+#+end_src
+
+#+RESULTS:
+: tensor([-0.3448, -1.3952, -1.8983], requires_grad=True)
+
+** Step 5: Step the weights
+This is ~one~ iteration of gradient descent.
+
+Now we need to update the parameters based
+on the gradients we just calculated:
+
+#+begin_src jupyter-python :results silent
+  lr = 1e-5 # lr, learning rate
+  params.data -= lr * params.grad.data
+  params.grad = None
+  preds = quadratic_f(time, params)
+#+end_src
+
+#+begin_src jupyter-python :results output
+  print(mse(preds, speed))
+#+end_src
+
+#+RESULTS:
+: tensor(2404.8325, grad_fn=<MeanBackward0>)
+
+#+begin_src jupyter-python :results silent
+  def apply_step(params, prn=True):
+      preds = quadratic_f(time, params)
+      loss = mse(preds, speed)
+      loss.backward()
+      params.data -= lr * params.grad.data
+      params.grad = None
+      if prn: print(loss.item())
+      return preds
+#+end_src
+
+** Step 6: Repeat
+#+begin_src jupyter-python :results output
+  for i in range(10):
+      apply_step(params)
+#+end_src
+
+#+RESULTS:
+: 2404.83251953125
+: 989.8635864257812
+: 722.0978393554688
+: 671.4180908203125
+: 661.8177490234375
+: 659.99072265625
+: 659.634765625
+: 659.55712890625
+: 659.5321655273438
+: 659.5172729492188
 
