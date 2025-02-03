@@ -40,7 +40,7 @@
 
 * Load images and representation analysis
 ** Download a sample of MNIST
-#+begin_src jupyter-python :exports code :results raw
+#+begin_src jupyter-python :exports code :results raw :exports both
   path = untar_data(URLs.MNIST_SAMPLE)
   path
 #+end_src
@@ -50,7 +50,7 @@
 
 ** Load 3s and 7s
 
-#+begin_src jupyter-python :results table :exports code
+#+begin_src jupyter-python :results table :exports both
   threes = (path/'train'/'3').ls().sorted()
   sevens = (path/'train'/'7').ls().sorted()
   im3_path = threes[1]
@@ -63,7 +63,7 @@
 
 ** NumPy array
 A section of an image of 3 represented in numbers in a NumPy array
-#+begin_src jupyter-python :results raw
+#+begin_src jupyter-python :results raw :exports both
 array(im3)[4:10, 4:10]
 #+end_src
 
@@ -77,7 +77,7 @@ array(im3)[4:10, 4:10]
 
 ** PyTorch Tensor
 The same can be done using a PyTorch Tensor. Notice the data type at the end of the array.
-#+begin_src jupyter-python :results raw
+#+begin_src jupyter-python :results raw :exports both
   im3_tensor = tensor(im3)
   im3_sliced = im3_tensor[4:10, 4:10]
   im3_sliced
@@ -92,7 +92,7 @@ The same can be done using a PyTorch Tensor. Notice the data type at the end of 
 :         [  0,   3,  20,  20,  15,   0]], dtype=torch.uint8)
 
 ** Render a section of 3 using Pandas DataFrame
-#+begin_src jupyter-python :results
+#+begin_src jupyter-python :results :exports both
   df = pd.DataFrame(im3_tensor[4:15, 4:22].numpy())
   df.style.set_properties(**{'font-size':'6pt'}).background_gradient('Greys')
 #+end_src
@@ -614,7 +614,7 @@ The same can be done using a PyTorch Tensor. Notice the data type at the end of 
 * Image processing
 ** Create tensors for each 3 and 7 using Python list comprehension to store their images
 Consequently verify the number of images loaded in the tensors.
-#+begin_src jupyter-python :results raw
+#+begin_src jupyter-python :results raw :exports both
   seven_tensors = [tensor(Image.open(o)) for o in sevens]
   three_tensors = [tensor(Image.open(o)) for o in threes]
   len(three_tensors), len(seven_tensors)
@@ -623,7 +623,7 @@ Consequently verify the number of images loaded in the tensors.
 #+RESULTS:
 | 6131 | 6265 |
 
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   show_image(three_tensors[1])
 #+end_src
 
@@ -636,7 +636,7 @@ Consequently verify the number of images loaded in the tensors.
 ** Stack the images, convert to float(~.float()~) then scale the range between 0 and 1 (~/255~)
 .shape returns the dimension of the resulting tensor, which is 6131 images, each having 28 x 28 pixels.
 
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   stacked_sevens = torch.stack(seven_tensors).float() / 255
   stacked_threes = torch.stack(three_tensors).float() / 255
   stacked_threes.shape
@@ -660,7 +660,7 @@ Normalization ensures a consistent input scale across different datasets. This i
 A pixel value of 255 represents the maximum intensity, and 0 represents no intensity. Dividing by 255 maps these to 1 and 0, respectively, preserving their relative intensity while scaling them to a smaller range.
 
 ** Length of a tensor's shape is its rank
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
 len(stacked_threes.shape)
 #+end_src
 
@@ -668,7 +668,7 @@ len(stacked_threes.shape)
 : 3
 
 ** A tensor's rank can also be retrieved using ndim
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
 stacked_threes.ndim
 #+end_src
 
@@ -677,7 +677,7 @@ stacked_threes.ndim
 
 ** What does the ideal 3 look like?
 Mean of all the images along dimension 0, which is the list of all images in the tensor.
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   mean3 = stacked_threes.mean(0)
   show_image(mean3)
 #+end_src
@@ -689,7 +689,7 @@ Mean of all the images along dimension 0, which is the list of all images in the
 :END:
 
 ** The ideal 7
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   mean7 = stacked_sevens.mean(0)
   show_image(mean7)
 #+end_src
@@ -701,7 +701,7 @@ Mean of all the images along dimension 0, which is the list of all images in the
 :END:
 
 ** Sample 3
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   a_3 = stacked_threes[1]
   show_image(a_3)
 #+end_src
@@ -719,7 +719,7 @@ There are two ways of achieving this using:
 2. The ~root mean squared error~ (RMSE) or ~L2 norm~.
 
 ** a_3 distances from mean3
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   dist_3_abs = (a_3 - mean3).abs().mean()
   dist_3_sqr = ((a_3 - mean3) ** 2).mean().sqrt()
   print(dist_3_abs, dist_3_sqr)
@@ -729,7 +729,7 @@ There are two ways of achieving this using:
 : tensor(0.1114) tensor(0.2021)
 
 ** a_3 distances from mean7
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   dist_7_abs = (a_3 - mean7).abs().mean()
   dist_7_sqr = ((a_3 - mean7) ** 2).mean().sqrt()
   print(dist_7_abs, dist_7_sqr)
@@ -740,7 +740,7 @@ There are two ways of achieving this using:
 
 ** Instead of writing python expressions for these calculations, Pytorch already provides these calculations in functions
 These are ~F.l1_loss~ and ~F.mse_loss~
-#+begin_src jupyter-python
+#+begin_src jupyter-python :exports both
   print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
 #+end_src
 
@@ -941,7 +941,7 @@ See [[#scatter-plot-example][Scatter plot example]]
 #+RESULTS:
 
 ** Distance a3 with 3
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 a_3 = stacked_threes[1]
 dist_3_abs = (a_3 - mean3).abs().mean()
 dist_3_sqr = ((a_3 - mean3)**2).mean().sqrt()
@@ -952,7 +952,7 @@ print(dist_3_abs,dist_3_sqr)
 : tensor(0.1114) tensor(0.2021)
 
 ** Distance a3 with 7
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   dist_7_abs = (a_3 - mean7).abs().mean()
   dist_7_sqr = ((a_3 - mean7)**2).mean().sqrt()
   print(dist_7_abs,dist_7_sqr)
@@ -962,7 +962,7 @@ print(dist_3_abs,dist_3_sqr)
 : tensor(0.1586) tensor(0.3021)
 
 ** Loss
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
 #+end_src
 
@@ -972,7 +972,7 @@ print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
 ** Broadcasting
 Broadcasting automatically expands arrays or tensors of smaller shapes to match larger ones for element-wise operations without duplicating data.
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   valid_3_tens = torch.stack([tensor(Image.open(o))
                               for o in (path/'valid'/'3').ls()])
   valid_3_tens = valid_3_tens.float()/255
@@ -986,7 +986,7 @@ Broadcasting automatically expands arrays or tensors of smaller shapes to match 
 : torch.Size([1010, 28, 28]) torch.Size([1028, 28, 28])
 
 *** Mean absolute error
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   def mnist_distance(a,b): return (a-b).abs().mean((-1,-2))
   print(mnist_distance(a_3, mean3))
 #+end_src
@@ -994,7 +994,7 @@ Broadcasting automatically expands arrays or tensors of smaller shapes to match 
 #+RESULTS:
 : tensor(0.1114)
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 valid_3_dist = mnist_distance(valid_3_tens, mean3)
 print(valid_3_dist, valid_3_dist.shape)
 #+end_src
@@ -1002,7 +1002,7 @@ print(valid_3_dist, valid_3_dist.shape)
 #+RESULTS:
 : tensor([0.1634, 0.1145, 0.1363,  ..., 0.1105, 0.1111, 0.1640]) torch.Size([1010])
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   def is_3(x): return mnist_distance(x,mean3) < mnist_distance(x,mean7)
   print(is_3(a_3), is_3(a_3).float(), is_3(valid_3_tens))
 #+end_src
@@ -1011,7 +1011,7 @@ print(valid_3_dist, valid_3_dist.shape)
 : tensor(True) tensor(1.) tensor([True, True, True,  ..., True, True, True])
 
 *** Accuracy
-#+begin_src jupyter-python :results value raw
+#+begin_src jupyter-python :results value raw :exports both
   accuracy_3s =      is_3(valid_3_tens).float().mean()
   accuracy_7s = (1 - is_3(valid_7_tens).float()).mean()
 
@@ -1032,7 +1032,7 @@ print(valid_3_dist, valid_3_dist.shape)
 
 #+RESULTS:
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 xt = tensor([3.,4.,10.]).requires_grad_()
 print(xt)
 #+end_src
@@ -1042,7 +1042,7 @@ print(xt)
 
 
 *** Vector
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 xt = tensor([3.,4.,10.]).requires_grad_()
 print(xt)
 #+end_src
@@ -1050,7 +1050,7 @@ print(xt)
 #+RESULTS:
 : tensor([ 3.,  4., 10.], requires_grad=True)
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 def f(x): return (x**2).sum()
 
 yt = f(xt)
@@ -1064,7 +1064,7 @@ print(xt.grad)
 : tensor([ 6.,  8., 20.])
 
 * An End-to-End SGD Example
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   time = torch.arange(0,20).float()
   speed = torch.randn(20)*3 + 0.75*(time-9.5)**2 + 1
   print(time, speed)
@@ -1089,7 +1089,7 @@ print(xt.grad)
 First, we initialize the parameters to random values and tell PyTorch
 that we want to track their gradients using requires_grad_:
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   params = torch.randn(3).requires_grad_()
   print(params)
 #+end_src
@@ -1100,7 +1100,7 @@ that we want to track their gradients using requires_grad_:
 ** Step 2: Calculate the predictions
 Next we calculate the predictions
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   preds = quadratic_f(time, params)
   print(preds)
 #+end_src
@@ -1132,7 +1132,7 @@ The code from the book to generate the predictions chart is not very intuitive; 
 :END:
 #+NAME: predictions
 
-#+begin_src jupyter-python :results file link :file "images/Chapter4/predictions.svg" :var output_file="images/Chatper4/predictions.svg"
+#+begin_src jupyter-python :results file link :file "images/Chapter4/predictions.svg" :var output_file="images/Chatper4/predictions.svg" :exports both
   # Sample data
   time = torch.arange(0,20).float()
   speed = torch.randn(20)*3 + 0.75*(time-9.5)**2 + 1
@@ -1159,7 +1159,7 @@ The code from the book to generate the predictions chart is not very intuitive; 
 #+end_src
 
 #+NAME: time, speed, params
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 print(time, speed, preds)
 #+end_src
 
@@ -1181,7 +1181,7 @@ print(time, speed, preds)
 
 We calculate the loss as follows:
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   loss = mse(preds, speed)
   print(loss)
 #+end_src
@@ -1195,7 +1195,7 @@ Our goal is now to improve this. To do that, we’ll need to know the gradients.
 
 The next step is to calculate the gradients, or an approximation of how the parameters need to change:
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 loss.backward()
 print(params.grad)
 #+end_src
@@ -1203,7 +1203,7 @@ print(params.grad)
 #+RESULTS:
 : tensor([-32213.8848,  -2093.8638,   -165.3856])
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 print(params.grad * 1e-5)
 #+end_src
 
@@ -1215,7 +1215,7 @@ need to pick a learning rate (we’ll discuss how to do that
 in practice in the next chapter; for now, we’ll just use
 1e-5 or 0.00001):
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
 print(params)
 #+end_src
 
@@ -1235,7 +1235,7 @@ on the gradients we just calculated:
   preds = quadratic_f(time, params)
 #+end_src
 
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   print(mse(preds, speed))
 #+end_src
 
@@ -1254,7 +1254,7 @@ on the gradients we just calculated:
 #+end_src
 
 ** Step 6: Repeat
-#+begin_src jupyter-python :results output
+#+begin_src jupyter-python :results output :exports both
   for i in range(10):
       apply_step(params)
 #+end_src
