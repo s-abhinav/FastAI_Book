@@ -1145,6 +1145,20 @@ print(xt.grad)
 : tensor([ 6.,  8., 20.])
 
 * An End-to-End SGD Example
+In this section, we will use the machine learning classifier algorithm to improve the loss.
+The steps are:
+1. ~Weight~ initialization - randomization of parameter values
+2. ~Prediction~ calculation
+3. ~Loss~ calculation
+4. ~Gradient~ calculation
+5. ~Weight~ stepping
+6. ~Repeat~
+7. ~Stop~ when loss is good enough
+
+** Ground truths
+To start with, let us set some ground truths for speed over time.
+- time is seeded in a range of 0 to 20
+- speed follows the quadratic function -> speed = ax^2 + bx + c where x is time.
 #+begin_src jupyter-python :results output :exports both
   time = torch.arange(0,20).float()
   speed = torch.randn(20)*3 + 0.75*(time-9.5)**2 + 1
@@ -1158,6 +1172,8 @@ print(xt.grad)
 :         29.5072, 46.3586, 50.0157, 63.8796])
 
 ** Functions
+- Quadratic function
+- Mean squared error
 #+begin_src jupyter-python :results silent
   def quadratic_f(t, params):
       a,b,c = params
@@ -1205,7 +1221,7 @@ predictions are to our targets, and take a look:
   show_preds(preds)
 #+end_src
 
-The code from the book to generate the predictions chart is not very intuitive; It relies on variable state outside the function and also does not work on my machine. See [[#scatter-plot-code][Scatter plot code]]
+The code from the book to generate the predictions chart is not very intuitive; It relies on variable state outside the function and also does not work on my machine. See [[#scatter-plot-code][Scatter plot code]] for my own implementation with the help of ChatGPT.
 
 *** Predictions
 :PROPERTIES:
@@ -1323,13 +1339,15 @@ on the gradients we just calculated:
 #+RESULTS:
 : tensor(2404.8325, grad_fn=<MeanBackward0>)
 
+*** The ~apply_step~ function comprising of most of the machine learning classifier algorightm.
 #+begin_src jupyter-python :results silent
   def apply_step(params, prn=True):
-      preds = quadratic_f(time, params)
-      loss = mse(preds, speed)
-      loss.backward()
-      params.data -= lr * params.grad.data
-      params.grad = None
+      # 1. Initialize paramaters (params)
+      preds = quadratic_f(time, params) # 2. Calculate predictions
+      loss = mse(preds, speed) # 3. Calculate loss
+      loss.backward() # 4. Calculate gradient
+      params.data -= lr * params.grad.data # 5. Step the weights
+      params.grad = None # clear grad to prevent accumulation
       if prn: print(loss.item())
       return preds
 #+end_src
@@ -1354,9 +1372,14 @@ on the gradients we just calculated:
 
 
 ** We can see the evolution of the predictions over multiple iterations
+- Yellow dot is prediction
+- Green dot is ground truth
+
+  Notice how the yellow curve approaches the green curve on every iteration.
 
 #+begin_src jupyter-python :results file link :file "images/Chapter4/speed_predictions_12.svg" :var output_file="images/Chapter4/speed_predictions_12.svg" :exports both
   # Save to an SVG file
+  # time and speed stay the same for all plots
   datasets = [(time, speed, apply_step(params)) for _ in range(12)]
 
   # Save multiple plots in a single SVG
