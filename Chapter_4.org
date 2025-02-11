@@ -11,6 +11,7 @@
 ** In Emacs
 - ~M-x conda-env-activate~ return
   fast-ai-course
+- ~M-x jupyter-run-repl~
 - ~C-c~ on the org file header, the line after the Title, PROPERTY: header-args ...
 - ~C-c~ on each jupyter-python code block you want to run.
 - ~C-c v b~ to run the whole org file
@@ -926,6 +927,86 @@ A ~tensor~ is a ~multidimensional data structure~ used to represent data in mach
           print(output_file)  # Output filename for Org-mode integration
       else:
           plt.show()
+
+  def show_multiple_preds(
+      datasets,  # List of (time, speed, preds) tuples
+      titles=None,
+      figsize=(10, 5),
+      output_file=None
+  ):
+      """
+      Plots multiple sets of true data points and predictions on subplots using a dark theme.
+
+      Parameters:
+          datasets (list of tuples): List of (time, speed, preds) tuples.
+          titles (list of str, optional): Titles for each subplot.
+          figsize (tuple, optional): Figure size (width, height).
+          output_file (str, optional): Path to save the plot as a PNG file.
+      """
+      colors = {
+          "background": '#2C3539',
+          "line": 'white',
+          "title": 'white',
+          "axis": 'white',
+          "grid": 'gray',
+          "true_data": 'green',  # Color for true data points
+          "preds": 'orange'  # Color for predictions
+      }
+
+      num_plots = len(datasets)
+
+      fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(18, 9), constrained_layout=True)
+      plt.tight_layout()
+
+      if num_plots == 1:
+          axes = [axes]  # Ensure axes is iterable for a single subplot
+
+      # Flatten the axes array so we can iterate over it
+      axes = axes.flatten()
+
+      # Loop through each axis and adjust properties
+      for i, ax in enumerate(axes):
+          ax.set_facecolor(colors["background"])
+          ax.set_title(f"Plot {i+1}", color=colors["title"], fontsize=6)  # Adjust title font size
+          ax.tick_params(axis="x", colors=colors["axis"], labelsize=4)  # Smaller x-tick labels
+          ax.tick_params(axis="y", colors=colors["axis"], labelsize=4)  # Smaller y-tick labels
+
+      fig.patch.set_facecolor(colors["background"])
+
+      for i, (time, speed, preds) in enumerate(datasets):
+          ax = axes[i]
+
+          # Convert preds to numpy if it's a torch tensor
+          preds_np = preds.detach().cpu().numpy() if torch.is_tensor(preds) else np.array(preds)
+
+          # Set background color
+          ax.set_facecolor(colors["background"])
+
+          # Plot true values and predictions
+          ax.scatter(time, speed, color=colors["true_data"], label="True Data", s=4)
+          ax.scatter(time, preds_np, color=colors["preds"], label="Predictions", s=4)
+
+          # Set labels and grid
+          ax.set_xlabel("Time", color=colors["axis"], fontsize=5)
+          ax.set_ylabel("Speed", color=colors["axis"], fontsize=5)
+          ax.legend(fontsize=3)
+          ax.grid(True)
+
+          # Set subplot title
+          if titles and i < len(titles):
+              ax.set_title(titles[i], color=colors["title"])
+
+          # Customize axis ticks
+          ax.tick_params(axis='x', colors=colors["axis"])
+          ax.tick_params(axis='y', colors=colors["axis"])
+
+      # Save or show the plot
+      if output_file:
+          fig.savefig(output_file, format='svg', dpi=300, facecolor=colors["background"])
+          plt.close(fig)
+          print(output_file)  # Output filename for Org-mode integration
+      else:
+          plt.show()
 #+end_src
 
 See [[#scatter-plot-example][Scatter plot example]]
@@ -1270,4 +1351,21 @@ on the gradients we just calculated:
 : 659.55712890625
 : 659.5321655273438
 : 659.5172729492188
+
+
+** We can see the evolution of the predictions over multiple iterations
+
+#+begin_src jupyter-python :results file link :file "images/Chapter4/speed_predictions_12.svg" :var output_file="images/Chapter4/speed_predictions_12.svg" :exports both
+  # Save to an SVG file
+  datasets = [(time, speed, apply_step(params)) for _ in range(12)]
+
+  # Save multiple plots in a single SVG
+  show_multiple_preds(
+      datasets,
+      output_file=output_file
+  )
+#+end_src
+
+#+RESULTS:
+[[file:images/Chapter4/speed_predictions_12.svg]]
 
