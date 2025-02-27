@@ -726,7 +726,7 @@ There are two ways of achieving this using:
 2. The ~root mean squared error~ (RMSE) or ~L2 norm~.
 
 ** a_3 distances from mean3
-#+begin_src python :exports both
+#+begin_src python :exports both :results output
   dist_3_abs = (a_3 - mean3).abs().mean()
   dist_3_sqr = ((a_3 - mean3) ** 2).mean().sqrt()
   print(dist_3_abs, dist_3_sqr)
@@ -736,7 +736,7 @@ There are two ways of achieving this using:
 : tensor(0.1114) tensor(0.2021)
 
 ** a_3 distances from mean7
-#+begin_src python :exports both
+#+begin_src python :exports both :results output
   dist_7_abs = (a_3 - mean7).abs().mean()
   dist_7_sqr = ((a_3 - mean7) ** 2).mean().sqrt()
   print(dist_7_abs, dist_7_sqr)
@@ -747,7 +747,7 @@ There are two ways of achieving this using:
 
 ** Instead of writing python expressions for these calculations, Pytorch already provides these calculations in functions
 These are ~F.l1_loss~ and ~F.mse_loss~
-#+begin_src python :exports both
+#+begin_src python :exports both :results output
   print(F.l1_loss(a_3.float(),mean7), F.mse_loss(a_3,mean7).sqrt())
 #+end_src
 
@@ -1098,7 +1098,7 @@ print(valid_3_dist, valid_3_dist.shape)
 : tensor(True) tensor(1.) tensor([True, True, True,  ..., True, True, True])
 
 *** Accuracy
-#+begin_src python :results value raw :exports both
+#+begin_src python :results output :exports both
   accuracy_3s =      is_3(valid_3_tens).float().mean()
   accuracy_7s = (1 - is_3(valid_7_tens).float()).mean()
 
@@ -1261,6 +1261,9 @@ The code from the book to generate the predictions chart is not very intuitive; 
   )
 #+end_src
 
+#+RESULTS:
+[[file:images/Chapter4/predictions.svg]]
+
 #+NAME: time, speed, params
 #+begin_src python :results output :exports both
 print(time, speed, preds)
@@ -1398,5 +1401,11 @@ on the gradients we just calculated:
 #+RESULTS:
 [[file:images/Chapter4/speed_predictions_12.svg]]
 
-* MNIST Loss Function
-
+** Summary of what was done so far
+1. Start with weights
+   a. If starting from scratch, it's random
+   b. or use a pre trained model (transfer learning)
+2. Use the model to predict
+   a. Compare ouputs of the model with our targets using our loss function
+3. Calculate the gradients to know how to improve the weights
+4. We then iterate until the change in loss improvement is negligible. It's like the good-enough? function in SICP.
